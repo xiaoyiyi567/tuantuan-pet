@@ -34,10 +34,12 @@ export function useSnapshot(): AppSnapshot {
       if (mounted) setSnapshot(next);
     });
     const offSnapshot = window.tuantuan.onSnapshot(setSnapshot);
+    const offSettings = window.tuantuan.onSettingsUpdated((settings) => setSnapshot((current) => ({ ...current, settings })));
     const offPetMode = window.tuantuan.onPetMode((petMode) => setSnapshot((current) => ({ ...current, petMode })));
     return () => {
       mounted = false;
       offSnapshot();
+      offSettings();
       offPetMode();
     };
   }, []);
