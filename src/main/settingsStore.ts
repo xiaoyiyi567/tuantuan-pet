@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "../shared/constants";
+import { DEFAULT_SETTINGS, resolvePetSize } from "../shared/constants";
 import type { Settings } from "../shared/types";
 
 export type SettingsStore = {
@@ -20,7 +20,8 @@ export function normalizeSettings(stored: Partial<Settings> = {}): Settings {
     distractionGraceSeconds: Math.max(0, Number(stored.distractionGraceSeconds ?? DEFAULT_SETTINGS.distractionGraceSeconds)),
     distractionBlockedApps: stringList(stored.distractionBlockedApps, DEFAULT_SETTINGS.distractionBlockedApps),
     distractionBlockedKeywords: stringList(stored.distractionBlockedKeywords, DEFAULT_SETTINGS.distractionBlockedKeywords),
-    muted: Boolean(stored.muted)
+    muted: Boolean(stored.muted),
+    petSize: resolvePetSize(stored.petSize)
   };
 }
 
