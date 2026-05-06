@@ -70,6 +70,7 @@ export type AppSnapshot = {
 
 export type RendererApi = {
   getSnapshot: () => Promise<AppSnapshot>;
+  getPetSpriteSrc: (mode: PetMode) => Promise<string | null>;
   petClicked: () => void;
   petContextMenu: () => void;
   petDragStart: (offset: { offsetX: number; offsetY: number }) => void;
