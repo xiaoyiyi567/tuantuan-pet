@@ -15,19 +15,30 @@ body {
   overflow: hidden;
 }
 
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 
 .pet-shell {
+  --window-width: 160px;
+  --window-height: 190px;
+  --pet-size: 120px;
+  --pet-scale: 0.779;
+  --bubble-font: clamp(10px, calc(var(--pet-size) * 0.105), 13px);
+  --bubble-width: min(calc(var(--window-width) - 12px), 210px);
+  --bubble-bottom: calc(var(--pet-size) + 13px);
+  --hop-distance: clamp(5px, calc(var(--pet-size) * 0.08), 14px);
+  --shake-distance: clamp(2px, calc(var(--pet-size) * 0.03), 5px);
+  --bob-distance: clamp(3px, calc(var(--pet-size) * 0.045), 8px);
+
   align-items: center;
   background: transparent;
   display: flex;
   flex-direction: column;
-  height: 320px;
+  height: var(--window-height);
   justify-content: flex-end;
-  padding: 0 8px 10px;
+  padding: 0 4px 8px;
   pointer-events: none;
   position: relative;
-  width: 240px;
+  width: var(--window-width);
 }
 
 .pet-button {
@@ -36,54 +47,91 @@ button, input { font: inherit; }
   border: 0;
   cursor: pointer;
   display: flex;
-  height: 180px;
+  height: calc(var(--pet-size) + 12px);
   justify-content: center;
   outline: 0;
   padding: 0;
   pointer-events: auto;
   position: relative;
-  width: 180px;
+  transition: transform 120ms ease;
+  width: calc(var(--pet-size) + 12px);
 }
+
+.pet-button:hover { transform: scale(1.03); }
+.size-mini .pet-button:hover,
+.size-small .pet-button:hover { transform: scale(1.025); }
 
 .speech-bubble {
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(30, 30, 30, 0.12);
-  border-radius: 12px;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16);
-  bottom: 166px;
+  border-radius: clamp(8px, calc(var(--pet-size) * 0.08), 12px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.14);
+  bottom: var(--bubble-bottom);
   left: 50%;
-  max-width: 220px;
-  min-width: 188px;
-  padding: 11px 12px;
+  max-width: var(--bubble-width);
+  min-width: min(150px, calc(var(--window-width) - 12px));
+  padding: clamp(6px, calc(var(--pet-size) * 0.07), 11px) clamp(8px, calc(var(--pet-size) * 0.08), 12px);
   pointer-events: auto;
   position: absolute;
   transform: translateX(-50%);
   z-index: 4;
 }
 
+.size-mini .speech-bubble,
+.size-small .speech-bubble {
+  min-width: calc(var(--window-width) - 10px);
+}
+
+.speech-bubble.bubble-side {
+  bottom: auto;
+  left: auto;
+  right: calc(var(--window-width) + 4px);
+  top: 8px;
+  transform: none;
+}
+
 .speech-bubble::after {
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 9px solid rgba(255, 255, 255, 0.94);
-  bottom: -8px;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid rgba(255, 255, 255, 0.94);
+  bottom: -7px;
   content: "";
-  left: calc(50% - 8px);
+  left: calc(50% - 7px);
   position: absolute;
 }
 
-.speech-bubble p {
-  font-size: 13px;
-  line-height: 1.4;
-  margin: 0;
-  text-align: center;
+.speech-bubble.bubble-side::after {
+  border-bottom: 7px solid transparent;
+  border-left: 8px solid rgba(255, 255, 255, 0.94);
+  border-right: 0;
+  border-top: 7px solid transparent;
+  bottom: auto;
+  left: auto;
+  right: -7px;
+  top: 18px;
 }
+
+.speech-bubble p {
+  display: -webkit-box;
+  font-size: var(--bubble-font);
+  line-height: 1.32;
+  margin: 0;
+  max-height: calc(var(--bubble-font) * 2.8);
+  overflow: hidden;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.size-mini .speech-bubble p,
+.size-small .speech-bubble p { -webkit-line-clamp: 1; }
 
 .bubble-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
   justify-content: center;
-  margin-top: 10px;
+  margin-top: 7px;
 }
 
 .bubble-button {
@@ -92,10 +140,13 @@ button, input { font: inherit; }
   border-radius: 999px;
   color: #202124;
   cursor: pointer;
-  font-size: 12px;
-  min-height: 28px;
-  padding: 5px 10px;
+  font-size: clamp(10px, calc(var(--pet-size) * 0.095), 12px);
+  min-height: clamp(22px, calc(var(--pet-size) * 0.2), 28px);
+  padding: 3px 8px;
 }
+
+.size-mini .bubble-actions,
+.size-small .bubble-actions { display: none; }
 
 .bubble-button.primary {
   background: #2f6f77;
@@ -107,42 +158,46 @@ button, input { font: inherit; }
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(47, 111, 119, 0.18);
   border-radius: 999px;
-  bottom: 10px;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  bottom: 6px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
   color: #2f6f77;
   display: flex;
-  font-size: 11px;
+  font-size: clamp(9px, calc(var(--pet-size) * 0.085), 11px);
   font-weight: 700;
-  gap: 6px;
+  gap: 5px;
   left: 50%;
-  padding: 4px 9px;
+  padding: 3px 7px;
   pointer-events: auto;
   position: absolute;
   transform: translateX(-50%);
+  white-space: nowrap;
   z-index: 3;
 }
 
 .focus-badge strong { color: #111; font-variant-numeric: tabular-nums; }
+.size-mini .focus-badge span { display: none; }
 
 .penguin {
   display: block;
   height: 168px;
   position: relative;
+  transform: scale(var(--pet-scale));
+  transform-origin: center bottom;
   width: 154px;
-  animation: pet-breathe 3s ease-in-out infinite;
 }
 
-.state-focus .penguin { animation: pet-breathe 2.4s ease-in-out infinite; }
-.state-success .penguin { animation: pet-hop 0.55s ease-in-out 3; }
-.state-error .penguin { animation: pet-alert 0.42s ease-in-out 4; }
-.state-break .penguin { animation: pet-bob 1.2s ease-in-out infinite; }
+.state-idle,
+.state-focus { animation: pet-breathe 3s ease-in-out infinite; }
+.state-success { animation: pet-hop 0.55s ease-in-out 3; }
+.state-error { animation: pet-alert 0.42s ease-in-out 4; }
+.state-break { animation: pet-bob 1.2s ease-in-out infinite; }
 
 .penguin__body {
   background: #050505;
   border: 4px solid #050505;
   border-radius: 48% 48% 44% 44%;
   bottom: 22px;
-  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.2);
   display: block;
   height: 130px;
   left: 16px;
@@ -411,7 +466,8 @@ button, input { font: inherit; }
 .toggle.is-on span::after { transform: translateX(16px); }
 .toggle strong { font-size: 12px; }
 
-.number-input {
+.number-input,
+.select-input {
   align-items: center;
   background: white;
   border: 1px solid rgba(30, 30, 30, 0.14);
@@ -420,6 +476,11 @@ button, input { font: inherit; }
   gap: 6px;
   height: 30px;
   padding: 0 8px;
+}
+
+.select-input {
+  color: #232323;
+  min-width: 170px;
 }
 
 .number-input input {
@@ -496,21 +557,21 @@ button, input { font: inherit; }
 
 @keyframes pet-breathe {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.025) translateY(-3px); }
+  50% { transform: scale(1.012) translateY(calc(var(--bob-distance) * -0.45)); }
 }
 
 @keyframes pet-hop {
   0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-18px) scale(1.04); }
+  50% { transform: translateY(calc(var(--hop-distance) * -1)) scale(1.035); }
 }
 
 @keyframes pet-alert {
   0%, 100% { transform: translateX(0); }
-  30% { transform: translateX(-5px); }
-  60% { transform: translateX(5px); }
+  30% { transform: translateX(calc(var(--shake-distance) * -1)); }
+  60% { transform: translateX(var(--shake-distance)); }
 }
 
 @keyframes pet-bob {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(calc(var(--bob-distance) * -1)); }
 }
