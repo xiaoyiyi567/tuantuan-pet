@@ -2,6 +2,8 @@ export type PetMode = "idle" | "focus" | "success" | "error" | "waiting" | "brea
 
 export type PetFacing = "left" | "right";
 
+export type PetSize = "mini" | "small" | "medium" | "large" | "xlarge";
+
 export type Settings = {
   launchAtLoginEnabled: boolean;
   breakReminderEnabled: boolean;
@@ -14,6 +16,7 @@ export type Settings = {
   distractionBlockedApps: string[];
   distractionBlockedKeywords: string[];
   muted: boolean;
+  petSize: PetSize;
 };
 
 export type TodayStats = {
