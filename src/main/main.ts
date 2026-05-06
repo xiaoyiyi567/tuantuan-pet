@@ -353,7 +353,7 @@ function resizeMenuItems(): Electron.MenuItemConstructorOptions[] {
     {
       label: "宠物大小",
       submenu: PET_SIZE_ORDER.map((size) => ({
-        label: PET_SIZE_PRESETS[size].label,
+        label: `${size}：${PET_SIZE_PRESETS[size].label}`,
         type: "checkbox" as const,
         checked: currentSize === size,
         click: () => setPetSize(size)
