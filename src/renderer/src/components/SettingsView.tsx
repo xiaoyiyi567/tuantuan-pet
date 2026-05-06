@@ -187,9 +187,11 @@ export function SettingsView(): JSX.Element {
 
       <section className="settings-group">
         <h2>素材入口</h2>
-        <p className="muted-copy">第一版使用 CSS 小企鹅占位。之后把 GIF 或 PNG 放入这些路径，再替换桌宠渲染即可。</p>
+        <p className="muted-copy">把透明背景 GIF、WebP 或 PNG 放到 pet_assets/团团小企鹅/ 对应状态目录。团团会按 gif、webp、png 的顺序自动读取；缺少素材的状态会继续使用 CSS 小企鹅。</p>
         <ul className="asset-list">
-          {TUANTUAN_PENGUIN_ASSET_SLOTS.map((slot) => <li key={slot.mode}>{slot.suggestedPath}</li>)}
+          {TUANTUAN_PENGUIN_ASSET_SLOTS.flatMap((slot) =>
+            slot.candidatePaths.map((path) => <li key={path}>{path}</li>)
+          )}
         </ul>
       </section>
 
