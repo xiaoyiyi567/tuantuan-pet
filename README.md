@@ -2,7 +2,7 @@
 
 团团是基于 PawPal 思路改造的 macOS 桌面工作宠物。第一阶段保留桌宠透明置顶窗口、菜单栏、本地设置保存、休息提醒、喝水提醒、专注模式和 macOS 当前 App 检测，并将体验改成中文工作陪伴风格。
 
-当前版本使用 CSS 绘制的小企鹅占位形象，保证空仓库也能直接运行。真实小企鹅素材入口已预留在 `pet_assets/团团小企鹅/`。
+当前版本默认使用 CSS 绘制的小企鹅作为 fallback。你也可以把真实透明背景素材放进 `pet_assets/团团小企鹅/`，团团会优先读取这些素材。
 
 ## 功能
 
@@ -15,7 +15,8 @@
 - 专注模式计时
 - macOS 当前 App / 窗口标题检测，用于专注模式分心提醒
 - 点击团团显示克制气泡
-- 右键菜单：专注、休息、静音、设置、退出
+- 右键菜单：专注、休息、静音、设置、退出、快捷缩放
+- 桌宠尺寸：mini / small / medium / large / xlarge
 
 ## 本地运行
 
@@ -42,20 +43,44 @@ pnpm dist:mac
 
 ## 小企鹅素材替换
 
-第一版默认使用 `src/renderer/src/components/PetView.tsx` 中的 `PenguinPet` CSS 形象。
+团团会按当前状态自动查找 `pet_assets/团团小企鹅/` 下的素材。优先级是：
 
-后续可以把真实素材放到：
+1. `gif`
+2. `webp`
+3. `png`
+4. CSS 小企鹅 fallback
+
+路径约定：
 
 ```text
 pet_assets/团团小企鹅/idle/idle.gif
+pet_assets/团团小企鹅/idle/idle.webp
+pet_assets/团团小企鹅/idle/idle.png
+
 pet_assets/团团小企鹅/focus/focus.gif
+pet_assets/团团小企鹅/focus/focus.webp
+pet_assets/团团小企鹅/focus/focus.png
+
 pet_assets/团团小企鹅/success/success.gif
+pet_assets/团团小企鹅/success/success.webp
+pet_assets/团团小企鹅/success/success.png
+
 pet_assets/团团小企鹅/error/error.gif
+pet_assets/团团小企鹅/error/error.webp
+pet_assets/团团小企鹅/error/error.png
+
 pet_assets/团团小企鹅/waiting/waiting.gif
+pet_assets/团团小企鹅/waiting/waiting.webp
+pet_assets/团团小企鹅/waiting/waiting.png
+
 pet_assets/团团小企鹅/break/break.gif
+pet_assets/团团小企鹅/break/break.webp
+pet_assets/团团小企鹅/break/break.png
 ```
 
-然后在 `PetView.tsx` 中把 `PenguinPet` 替换为按 `snapshot.petMode` 选择图片的组件。素材路径约定也记录在 `src/shared/petAppearance.ts`。
+只放某个状态的素材即可。例如只放 `pet_assets/团团小企鹅/idle/idle.png`，idle 状态会显示新素材，其他状态继续使用 CSS 小企鹅。素材建议使用透明背景，团团会按当前宠物大小等比例缩放，不会拉伸变形。
+
+打包时 `package.json` 已通过 `extraResources` 把 `pet_assets` 复制到 App 的 resources 目录，因此 `pnpm dist:mac` 后仍会读取同一套素材约定。
 
 ## 第一阶段改造范围
 
@@ -68,7 +93,7 @@ pet_assets/团团小企鹅/break/break.gif
 - 保留休息提醒、喝水提醒
 - 保留专注模式当前 App 检测
 - 将宠物名称和主要文案改为“团团”中文工作陪伴风格
-- 预留小企鹅素材替换入口
+- 支持小企鹅素材替换入口
 
 暂不包含：
 
