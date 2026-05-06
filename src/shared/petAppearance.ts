@@ -1,15 +1,32 @@
 import type { PetMode } from "./types";
 
+export type PetSpriteFormat = "gif" | "webp" | "png";
+
 export type PetAssetSlot = {
   mode: PetMode;
   suggestedPath: string;
+  candidatePaths: string[];
 };
 
+export const TUANTUAN_PENGUIN_ASSET_FOLDER = "团团小企鹅";
+export const PET_SPRITE_FORMATS: readonly PetSpriteFormat[] = ["gif", "webp", "png"];
+
+export function petSpriteRelativePaths(mode: PetMode): string[] {
+  return PET_SPRITE_FORMATS.map((format) => `pet_assets/${TUANTUAN_PENGUIN_ASSET_FOLDER}/${mode}/${mode}.${format}`);
+}
+
 export const TUANTUAN_PENGUIN_ASSET_SLOTS: PetAssetSlot[] = [
-  { mode: "idle", suggestedPath: "pet_assets/团团小企鹅/idle/idle.gif" },
-  { mode: "focus", suggestedPath: "pet_assets/团团小企鹅/focus/focus.gif" },
-  { mode: "success", suggestedPath: "pet_assets/团团小企鹅/success/success.gif" },
-  { mode: "error", suggestedPath: "pet_assets/团团小企鹅/error/error.gif" },
-  { mode: "waiting", suggestedPath: "pet_assets/团团小企鹅/waiting/waiting.gif" },
-  { mode: "break", suggestedPath: "pet_assets/团团小企鹅/break/break.gif" }
-];
+  "idle",
+  "focus",
+  "success",
+  "error",
+  "waiting",
+  "break"
+].map((mode) => {
+  const candidatePaths = petSpriteRelativePaths(mode as PetMode);
+  return {
+    mode: mode as PetMode,
+    suggestedPath: candidatePaths[0],
+    candidatePaths
+  };
+});
