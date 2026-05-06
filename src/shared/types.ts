@@ -76,10 +76,15 @@ export type RendererApi = {
   petDragStop: () => void;
   bubbleAction: (actionId: string) => void;
   updateSettings: (settings: Partial<Settings>) => void;
+  setPetSize: (size: PetSize) => void;
+  petSizeSmaller: () => void;
+  petSizeLarger: () => void;
+  resetPetSize: () => void;
   startFocus: () => void;
   stopFocus: () => void;
   resetToday: () => void;
   onSnapshot: (callback: (snapshot: AppSnapshot) => void) => () => void;
+  onSettingsUpdated: (callback: (settings: Settings) => void) => () => void;
   onPetMode: (callback: (mode: PetMode) => void) => () => void;
   onShowBubble: (callback: (bubble: SpeechBubble) => void) => () => void;
   onHideBubble: (callback: () => void) => () => void;
