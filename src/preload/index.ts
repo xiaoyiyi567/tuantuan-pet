@@ -20,8 +20,9 @@ function isPetMode(mode: string): mode is PetMode {
 }
 
 function petAssetRoots(): string[] {
+  const resourcesPath = (process as { resourcesPath?: string }).resourcesPath;
   const roots = [join(__dirname, "../../pet_assets")];
-  if (process.resourcesPath) roots.unshift(join(process.resourcesPath, "pet_assets"));
+  if (resourcesPath) roots.unshift(join(resourcesPath, "pet_assets"));
   return Array.from(new Set(roots));
 }
 
