@@ -149,6 +149,11 @@ export function PetView(): JSX.Element {
         onLostPointerCapture={() => finishPointerDrag(false)}
         onPointerMove={movePointer}
         onPointerUp={stopPointer}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          window.tuantuan.petContextMenu();
+        }}
         type="button"
       >
         <PenguinPet mode={snapshot.petMode} />
