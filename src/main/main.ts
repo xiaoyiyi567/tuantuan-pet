@@ -1,8 +1,38 @@
 import { app, BrowserWindow, ipcMain, Menu, nativeTheme, screen, Tray } from "electron";
 import Store from "electron-store";
-import { createEmptyStats, DEFAULT_SETTINGS, PET_COPY, pick } from "../shared/constants";
-import type { AppSnapshot, DistractionStatus, PetFacing, PetMode, Settings, SpeechBubble, TodayStats } from "../shared/types";
-import { APP_NAME, DISTRACTION_CHECK_INTERVAL_MS, DISTRACTION_WARNING_COOLDOWN_MS, IS_DEV, PET_WINDOW, PRELOAD_PATH, RENDERER_HTML_PATH, SETTINGS_WINDOW, STORE_NAME } from "./config";
+import {
+  createEmptyStats,
+  DEFAULT_PET_SIZE,
+  DEFAULT_SETTINGS,
+  largerPetSize,
+  PET_COPY,
+  PET_SIZE_ORDER,
+  PET_SIZE_PRESETS,
+  pick,
+  resolvePetSize,
+  smallerPetSize
+} from "../shared/constants";
+import type {
+  AppSnapshot,
+  DistractionStatus,
+  PetFacing,
+  PetMode,
+  PetSize,
+  Settings,
+  SpeechBubble,
+  TodayStats
+} from "../shared/types";
+import {
+  APP_NAME,
+  DISTRACTION_CHECK_INTERVAL_MS,
+  DISTRACTION_WARNING_COOLDOWN_MS,
+  IS_DEV,
+  PRELOAD_PATH,
+  RENDERER_HTML_PATH,
+  SETTINGS_WINDOW,
+  STORE_NAME,
+  WINDOW_MARGIN
+} from "./config";
 import { classifyDistraction, isPermissionError, readActiveWindow } from "./distraction";
 import { getStoredSettings, normalizeSettings } from "./settingsStore";
 import { getCurrentStats, resetCurrentStats, updateCurrentStats } from "./statsStore";
@@ -15,6 +45,7 @@ type StoreSchema = {
 };
 
 type PetPosition = { x: number; y: number };
+type WindowSize = { width: number; height: number };
 
 app.setName(APP_NAME);
 
@@ -59,17 +90,45 @@ function getSettings(): Settings {
   return getStoredSettings(store);
 }
 
+function petWindowSize(size = getSettings().petSize): WindowSize {
+  const preset = PET_SIZE_PRESETS[resolvePetSize(size)];
+  return { width: preset.windowWidth, height: preset.windowHeight };
+}
+
+function clampBounds(bounds: Electron.Rectangle): Electron.Rectangle {
+  const display = screen.getDisplayMatching(bounds).workArea;
+  const minX = display.x + WINDOW_MARGIN;
+  const maxX = display.x + display.width - bounds.width - WINDOW_MARGIN;
+  const minY = display.y + WINDOW_MARGIN;
+  const maxY = display.y + display.height - bounds.height - WINDOW_MARGIN;
+  return {
+    ...bounds,
+    x: Math.min(Math.max(bounds.x, minX), Math.max(minX, maxX)),
+    y: Math.min(Math.max(bounds.y, minY), Math.max(minY, maxY))
+  };
+}
+
 function setSettings(next: Settings): void {
+  const previous = getSettings();
   const normalized = normalizeSettings(next);
   store.set("settings", normalized);
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: normalized.launchAtLoginEnabled, openAsHidden: true });
+  }
+  if (previous.petSize !== normalized.petSize) {
+    resizePetWindow(normalized.petSize);
   }
   sendToAll("settings:updated", normalized);
   scheduleReminderTimers();
   scheduleDistractionDetection();
   updateTrayMenu();
   publishSnapshot();
+}
+
+function setPetSize(size: PetSize, message?: string): void {
+  const nextSize = resolvePetSize(size);
+  setSettings({ ...getSettings(), petSize: nextSize });
+  if (message) showBubble({ id: "pet-size", message, autoDismissMs: 1600 });
 }
 
 function getStats(): TodayStats {
@@ -115,13 +174,17 @@ function setPetMode(next: PetMode): void {
   publishSnapshot();
 }
 
+function compactBubbleMessage(message: string): string {
+  const size = getSettings().petSize;
+  if (size !== "mini" && size !== "small") return message;
+  return message.length > 18 ? `${message.slice(0, 17)}…` : message;
+}
+
 function showBubble(bubble: SpeechBubble): void {
   if (getSettings().muted) return;
   if (bubbleTimer) clearTimeout(bubbleTimer);
-  sendToPet("pet:show-bubble", bubble);
-  if (bubble.autoDismissMs) {
-    bubbleTimer = setTimeout(hideBubble, bubble.autoDismissMs);
-  }
+  sendToPet("pet:show-bubble", { ...bubble, message: compactBubbleMessage(bubble.message) });
+  if (bubble.autoDismissMs) bubbleTimer = setTimeout(hideBubble, bubble.autoDismissMs);
 }
 
 function hideBubble(): void {
@@ -143,13 +206,14 @@ function loadRenderer(win: BrowserWindow, route: "pet" | "settings"): void {
 
 function initialPetBounds(): Electron.Rectangle {
   const display = screen.getPrimaryDisplay().workArea;
+  const size = petWindowSize();
   const saved = store.get("petPosition");
-  if (saved) return { ...PET_WINDOW, x: saved.x, y: saved.y };
-  return {
-    ...PET_WINDOW,
-    x: display.x + display.width - PET_WINDOW.width - 28,
-    y: display.y + display.height - PET_WINDOW.height - 28
-  };
+  if (saved) return clampBounds({ ...size, x: saved.x, y: saved.y });
+  return clampBounds({
+    ...size,
+    x: display.x + display.width - size.width - WINDOW_MARGIN,
+    y: display.y + display.height - size.height - WINDOW_MARGIN
+  });
 }
 
 function persistPetPosition(): void {
@@ -158,11 +222,26 @@ function persistPetPosition(): void {
   store.set("petPosition", { x: bounds.x, y: bounds.y });
 }
 
+function resizePetWindow(size: PetSize): void {
+  if (!petWindow || petWindow.isDestroyed()) return;
+  const bounds = petWindow.getBounds();
+  const nextSize = petWindowSize(size);
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
+  const nextBounds = clampBounds({
+    ...nextSize,
+    x: Math.round(centerX - nextSize.width / 2),
+    y: Math.round(centerY - nextSize.height / 2)
+  });
+  petWindow.setBounds(nextBounds, false);
+  persistPetPosition();
+}
+
 function createPetWindow(): void {
   const bounds = initialPetBounds();
   petWindow = new BrowserWindow({
-    width: PET_WINDOW.width,
-    height: PET_WINDOW.height,
+    width: bounds.width,
+    height: bounds.height,
     x: bounds.x,
     y: bounds.y,
     transparent: true,
@@ -188,7 +267,7 @@ function createPetWindow(): void {
   loadRenderer(petWindow, "pet");
   petWindow.once("ready-to-show", () => {
     petWindow?.showInactive();
-    showBubble({ id: "hello", message: "团团已进入工作模式。", autoDismissMs: 2600 });
+    showBubble({ id: "hello", message: "团团已进入工作模式。", autoDismissMs: 2200 });
     updateTrayMenu();
     publishSnapshot();
   });
@@ -265,6 +344,24 @@ function togglePetWindowVisibility(): void {
   publishSnapshot();
 }
 
+function resizeMenuItems(): Electron.MenuItemConstructorOptions[] {
+  const currentSize = getSettings().petSize;
+  return [
+    { label: "变小", click: () => setPetSize(smallerPetSize(currentSize), "我变小一点啦。") },
+    { label: "变大", click: () => setPetSize(largerPetSize(currentSize), "我变大一点啦。") },
+    { label: "恢复默认大小", click: () => setPetSize(DEFAULT_PET_SIZE, "恢复默认大小啦。") },
+    {
+      label: "宠物大小",
+      submenu: PET_SIZE_ORDER.map((size) => ({
+        label: PET_SIZE_PRESETS[size].label,
+        type: "checkbox" as const,
+        checked: currentSize === size,
+        click: () => setPetSize(size)
+      }))
+    }
+  ];
+}
+
 function updateTrayMenu(): void {
   const settings = getSettings();
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -272,8 +369,9 @@ function updateTrayMenu(): void {
     { type: "separator" },
     { label: petWindow?.isVisible() ? "隐藏团团" : "显示团团", click: togglePetWindowVisibility },
     { label: focusActive ? "停止专注模式" : "开始专注模式", click: focusActive ? () => stopFocusMode(false) : startFocusMode },
-    { label: settings.muted ? "取消静音" : "静音模式", click: () => setSettings({ ...settings, muted: !settings.muted }) },
+    ...resizeMenuItems(),
     { type: "separator" },
+    { label: settings.muted ? "取消静音" : "静音模式", click: () => setSettings({ ...settings, muted: !settings.muted }) },
     { label: "设置", click: createSettingsWindow },
     { type: "separator" },
     { label: "退出", click: () => app.quit() }
@@ -287,8 +385,10 @@ function showPetContextMenu(): void {
   Menu.buildFromTemplate([
     { label: focusActive ? "停止专注模式" : "开始专注模式", click: focusActive ? () => stopFocusMode(false) : startFocusMode },
     { label: "休息模式", click: () => triggerBreakReminder(true) },
-    { label: settings.muted ? "取消静音" : "静音模式", click: () => setSettings({ ...settings, muted: !settings.muted }) },
     { type: "separator" },
+    ...resizeMenuItems(),
+    { type: "separator" },
+    { label: settings.muted ? "取消静音" : "静音模式", click: () => setSettings({ ...settings, muted: !settings.muted }) },
     { label: "设置", click: createSettingsWindow },
     { label: "退出", click: () => app.quit() }
   ]).popup({ window: petWindow ?? undefined });
@@ -297,18 +397,20 @@ function showPetContextMenu(): void {
 function movePetWithCursor(): void {
   if (!petWindow || petWindow.isDestroyed()) return;
   const cursor = screen.getCursorScreenPoint();
-  petWindow.setBounds({
-    ...PET_WINDOW,
+  const size = petWindowSize();
+  petWindow.setBounds(clampBounds({
+    ...size,
     x: cursor.x - dragOffset.x,
     y: cursor.y - dragOffset.y
-  });
+  }));
 }
 
 function startPetDrag(offset: { offsetX: number; offsetY: number }): void {
   if (!petWindow || petWindow.isDestroyed()) return;
+  const size = petWindowSize();
   dragOffset = {
-    x: Math.min(Math.max(Math.round(offset.offsetX), 0), PET_WINDOW.width),
-    y: Math.min(Math.max(Math.round(offset.offsetY), 0), PET_WINDOW.height)
+    x: Math.min(Math.max(Math.round(offset.offsetX), 0), size.width),
+    y: Math.min(Math.max(Math.round(offset.offsetY), 0), size.height)
   };
   if (dragTimer) clearInterval(dragTimer);
   if (dragSafetyTimer) clearTimeout(dragSafetyTimer);
@@ -362,8 +464,8 @@ function triggerBreakReminder(fromManual: boolean): void {
     id: "break",
     message: pick(PET_COPY.break),
     actions: [
-      { id: "break:done", label: "我休息了一下", kind: "primary" },
-      { id: "break:snooze", label: "10 分钟后提醒" }
+      { id: "break:done", label: "我休息了", kind: "primary" },
+      { id: "break:snooze", label: "稍后提醒" }
     ]
   });
 }
@@ -378,7 +480,7 @@ function triggerHydrationReminder(fromManual: boolean): void {
   setPetMode("waiting");
   showBubble({
     id: "hydration",
-    message: "喝一口水吧，团团也会安心一点。",
+    message: "喝一口水吧。",
     actions: [
       { id: "hydration:done", label: "我喝水了", kind: "primary" },
       { id: "hydration:snooze", label: "稍后提醒" }
@@ -412,7 +514,7 @@ async function checkDistractionNow(): Promise<void> {
     setPetMode("error");
     showBubble({
       id: "focus-warning",
-      message: `好像离主线有点远了：${matchedRule.replace(/^(app|keyword):/, "")}。要不要回到手头任务？`,
+      message: `离主线有点远了：${matchedRule.replace(/^(app|keyword):/, "")}。`,
       actions: [
         { id: "focus:back", label: "回到工作", kind: "primary" },
         { id: "focus:end", label: "结束专注" }
@@ -465,7 +567,7 @@ function startFocusMode(): void {
   focusStartedAt = Date.now();
   focusEndsAt = Date.now() + settings.focusDurationMinutes * 60 * 1000;
   setPetMode("focus");
-  showBubble({ id: "focus-start", message: `团团开始守护这 ${settings.focusDurationMinutes} 分钟。`, autoDismissMs: 4200 });
+  showBubble({ id: "focus-start", message: `守护 ${settings.focusDurationMinutes} 分钟。`, autoDismissMs: 2600 });
   if (focusTimer) clearTimeout(focusTimer);
   focusTimer = setTimeout(() => stopFocusMode(true), settings.focusDurationMinutes * 60 * 1000);
   scheduleDistractionDetection();
@@ -483,19 +585,19 @@ function stopFocusMode(completed: boolean): void {
   focusTimer = null;
   updateStats((stats) => ({ ...stats, focusMinutes: stats.focusMinutes + elapsedMinutes }));
   setPetMode(completed ? "success" : "idle");
-  showBubble({ id: "focus-end", message: completed ? pick(PET_COPY.success) : "专注已结束，团团继续陪着。", autoDismissMs: 2800 });
+  showBubble({ id: "focus-end", message: completed ? pick(PET_COPY.success) : "专注已结束。", autoDismissMs: 2200 });
   scheduleDistractionDetection();
   updateTrayMenu();
   setTimeout(() => {
     if (!focusActive) setPetMode("idle");
-  }, 3000);
+  }, 2400);
 }
 
 function handleBubbleAction(actionId: string): void {
   if (actionId === "break:done") {
     updateStats((stats) => ({ ...stats, breaksTaken: stats.breaksTaken + 1 }));
     setPetMode("success");
-    showBubble({ id: "break-done", message: "休息完成，回来得刚刚好。", autoDismissMs: 2200 });
+    showBubble({ id: "break-done", message: "休息完成。", autoDismissMs: 1800 });
     scheduleReminderTimers();
     return;
   }
@@ -511,7 +613,7 @@ function handleBubbleAction(actionId: string): void {
   if (actionId === "hydration:done") {
     updateStats((stats) => ({ ...stats, watersLogged: stats.watersLogged + 1 }));
     setPetMode("success");
-    showBubble({ id: "hydration-done", message: "好，水分补上了。", autoDismissMs: 2000 });
+    showBubble({ id: "hydration-done", message: "水分补上啦。", autoDismissMs: 1800 });
     scheduleReminderTimers();
     return;
   }
@@ -526,7 +628,7 @@ function handleBubbleAction(actionId: string): void {
   }
   if (actionId === "focus:back") {
     setPetMode("focus");
-    showBubble({ id: "focus-back", message: "好，我们轻轻回到主线。", autoDismissMs: 1800 });
+    showBubble({ id: "focus-back", message: "回到主线。", autoDismissMs: 1600 });
     return;
   }
   if (actionId === "focus:end") stopFocusMode(false);
@@ -536,7 +638,7 @@ function registerIpc(): void {
   ipcMain.handle("app:get-snapshot", () => snapshot());
   ipcMain.on("pet:clicked", () => {
     setPetMode(focusActive ? "focus" : "idle");
-    showBubble({ id: "click", message: pick(PET_COPY[focusActive ? "focus" : "idle"]), autoDismissMs: 1800 });
+    showBubble({ id: "click", message: pick(PET_COPY[focusActive ? "focus" : "idle"]), autoDismissMs: 1600 });
   });
   ipcMain.on("pet:context-menu", showPetContextMenu);
   ipcMain.on("pet:drag-start", (_event, offset: { offsetX: number; offsetY: number }) => startPetDrag(offset));
