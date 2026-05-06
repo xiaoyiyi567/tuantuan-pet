@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { JSX } from "react";
-import type { Settings } from "../../../shared/types";
+import { PET_SIZE_ORDER, PET_SIZE_PRESETS } from "../../../shared/constants";
+import type { PetSize, Settings } from "../../../shared/types";
 import { TUANTUAN_PENGUIN_ASSET_SLOTS } from "../../../shared/petAppearance";
 import { formatTimer, formatTimestamp } from "../format";
 import { useNow, useSnapshot } from "../hooks";
@@ -29,6 +30,18 @@ function NumberInput({ value, min, max, unit, onChange }: { value: number; min: 
       />
       <span>{unit}</span>
     </label>
+  );
+}
+
+function PetSizeSelect({ value, onChange }: { value: PetSize; onChange: (next: PetSize) => void }): JSX.Element {
+  return (
+    <select className="select-input" value={value} onChange={(event) => onChange(event.target.value as PetSize)}>
+      {PET_SIZE_ORDER.map((size) => (
+        <option key={size} value={size}>
+          {size}：{PET_SIZE_PRESETS[size].label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -109,6 +122,13 @@ export function SettingsView(): JSX.Element {
       </section>
 
       <section className="settings-group">
+        <h2>外观</h2>
+        <Row title="宠物大小" hint="默认 medium，适合长期停留在桌面右下角。">
+          <PetSizeSelect value={draft.petSize} onChange={(petSize) => update({ petSize })} />
+        </Row>
+      </section>
+
+      <section className="settings-group">
         <h2>提醒</h2>
         <Row title="休息提醒" hint={`下次：${formatTimer(snapshot.timers.breakDueAt, now)}`}>
           <Toggle checked={draft.breakReminderEnabled} label="开启" onChange={(breakReminderEnabled) => update({ breakReminderEnabled })} />
@@ -177,6 +197,7 @@ export function SettingsView(): JSX.Element {
         <h2>运行状态</h2>
         <div className="diagnostics">
           <span>状态：{snapshot.petMode}</span>
+          <span>大小：{snapshot.settings.petSize}</span>
           <span>检测：{snapshot.distraction.state}</span>
           <span>当前 App：{snapshot.distraction.activeApp || "无"}</span>
           <span>检查时间：{formatTimestamp(snapshot.distraction.lastCheckedAt)}</span>
