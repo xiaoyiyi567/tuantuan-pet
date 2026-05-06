@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { JSX, PointerEvent } from "react";
+import type { CSSProperties, JSX, PointerEvent } from "react";
+import { PET_SIZE_PRESETS } from "../../../shared/constants";
 import type { PetMode, SpeechBubble } from "../../../shared/types";
 import { useSnapshot, useNow } from "../hooks";
 
@@ -11,6 +12,9 @@ type DragRef = {
 };
 
 const DRAG_START_DISTANCE_PX = 10;
+const BASE_PENGUIN_WIDTH = 154;
+
+type PetStyle = CSSProperties & Record<"--window-width" | "--window-height" | "--pet-size" | "--pet-scale", string>;
 
 function formatFocusCountdown(endsAt: number | null, now: number): string {
   const remainingSeconds = Math.max(0, Math.ceil(((endsAt ?? now) - now) / 1000));
@@ -42,6 +46,15 @@ export function PetView(): JSX.Element {
   const now = useNow(1000);
   const [bubble, setBubble] = useState<SpeechBubble | null>(null);
   const dragRef = useRef<DragRef | null>(null);
+  const size = snapshot.settings.petSize;
+  const preset = PET_SIZE_PRESETS[size];
+  const bubbleSide = typeof window !== "undefined" && window.screenY < 90;
+  const style: PetStyle = {
+    "--window-width": `${preset.windowWidth}px`,
+    "--window-height": `${preset.windowHeight}px`,
+    "--pet-size": `${preset.pet}px`,
+    "--pet-scale": String(preset.pet / BASE_PENGUIN_WIDTH)
+  };
 
   useEffect(() => {
     const offBubble = window.tuantuan.onShowBubble(setBubble);
@@ -94,7 +107,8 @@ export function PetView(): JSX.Element {
 
   return (
     <main
-      className="pet-shell"
+      className={`pet-shell size-${size}`}
+      style={style}
       aria-label="团团桌面工作宠物"
       onContextMenu={(event) => {
         event.preventDefault();
@@ -102,8 +116,8 @@ export function PetView(): JSX.Element {
       }}
     >
       {bubble ? (
-        <section className="speech-bubble">
-          <p>{bubble.message}</p>
+        <section className={`speech-bubble${bubbleSide ? " bubble-side" : ""}`}>
+          <p title={bubble.message}>{bubble.message}</p>
           {bubble.actions?.length ? (
             <div className="bubble-actions">
               {bubble.actions.map((action) => (
