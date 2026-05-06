@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, JSX, PointerEvent } from "react";
 import { PET_SIZE_PRESETS } from "../../../shared/constants";
-import type { PetMode, SpeechBubble } from "../../../shared/types";
+import type { SpeechBubble } from "../../../shared/types";
 import { useSnapshot, useNow } from "../hooks";
+import { PetSprite } from "./PetSprite";
 
 type DragRef = {
   pointerId: number;
@@ -22,23 +23,6 @@ function formatFocusCountdown(endsAt: number | null, now: number): string {
   const minutes = Math.floor((remainingSeconds % 3600) / 60);
   const seconds = remainingSeconds % 60;
   return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
-}
-
-function PenguinPet({ mode }: { mode: PetMode }): JSX.Element {
-  return (
-    <span className={`penguin penguin-${mode}`} aria-hidden="true">
-      <span className="penguin__bow" />
-      <span className="penguin__body">
-        <span className="penguin__belly" />
-        <span className="penguin__eye penguin__eye--left" />
-        <span className="penguin__eye penguin__eye--right" />
-        <span className="penguin__beak" />
-        <span className="penguin__scarf" />
-      </span>
-      <span className="penguin__feet" />
-      <span className="penguin__badge" />
-    </span>
-  );
 }
 
 export function PetView(): JSX.Element {
@@ -156,7 +140,7 @@ export function PetView(): JSX.Element {
         }}
         type="button"
       >
-        <PenguinPet mode={snapshot.petMode} />
+        <PetSprite mode={snapshot.petMode} />
       </button>
     </main>
   );
