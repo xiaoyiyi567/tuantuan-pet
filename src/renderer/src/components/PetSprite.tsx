@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
-import type { JSX } from "react";
+import type { CSSProperties, JSX } from "react";
 import type { PetMode } from "../../../shared/types";
+
+const spriteStyle: CSSProperties = {
+  display: "block",
+  width: "var(--pet-size)",
+  height: "var(--pet-size)",
+  objectFit: "contain",
+  objectPosition: "center bottom",
+  pointerEvents: "none",
+  userSelect: "none"
+};
 
 function CssPenguin({ mode }: { mode: PetMode }): JSX.Element {
   return (
@@ -39,6 +49,7 @@ export function PetSprite({ mode }: { mode: PetMode }): JSX.Element {
     return (
       <img
         className="pet-sprite"
+        style={spriteStyle}
         src={spriteSrc}
         alt=""
         aria-hidden="true"
